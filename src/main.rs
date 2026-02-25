@@ -22,5 +22,8 @@ fn main() {
     let scanner = Scanner::new(&code);
     let tokens = scanner.scan();
     let mut parser = Parser::new(tokens);
-    println!("{}", parser.parse())
+    match parser.parse() {
+        Ok(ast) => println!("{}", ast),
+        Err(e) => eprintln!("Error: {}", e),
+    }
 }

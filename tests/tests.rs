@@ -6,7 +6,7 @@ mod tests {
         let scanner = Scanner::new(input);
         let tokens = scanner.scan();
         let mut parser = Parser::new(tokens);
-        let result = parser.parse().to_string();
+        let result = parser.parse().expect("parse failed").to_string();
         assert_eq!(result, expected);
     }
 

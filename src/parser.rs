@@ -10,6 +10,19 @@ use std::fmt::Display;
 use crate::scanner::Token;
 
 #[derive(Debug)]
+pub enum ParseError {
+    UnexpectedToken(String),
+}
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseError::UnexpectedToken(s) => write!(f, "Unexpected token: {}", s),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum AtomValue {
     String(String),
     Number(u64),
@@ -56,6 +69,7 @@ pub struct Parser {
     tokens: Vec<Token>,
 }
 
+// A recursive descent parser
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
@@ -68,13 +82,14 @@ impl Parser {
         self.tokens.get(self.token_index).cloned()
     }
 
-    fn consume(&mut self, token: Token) {
+    fn consume(&mut self, token: Token) -> Result<(), ParseError> {
         if let Some(current_token) = self.current_token()
             && current_token == token
         {
             self.token_index += 1;
+            Ok(())
         } else {
-            panic!("Invalid token")
+            Err(ParseError::UnexpectedToken(token.to_string()))
         }
     }
 
@@ -82,41 +97,38 @@ impl Parser {
         self.token_index += 1;
     }
 
-    fn list(&mut self) -> Vec<Expr> {
-        self.consume(Token::LeftParen);
+    fn list(&mut self) -> Result<Vec<Expr>, ParseError> {
+        self.consume(Token::LeftParen)?;
         let mut expressions: Vec<Expr> = vec![];
         while let Some(cur_token) = self.current_token()
             && cur_token != Token::RightParen
         {
-            expressions.push(self.expression());
+            expressions.push(self.expression()?);
         }
-        self.consume(Token::RightParen);
-        expressions
+        self.consume(Token::RightParen)?;
+        Ok(expressions)
     }
 
-    fn expression(&mut self) -> Expr {
-        if let Some(token) = self.current_token() {
-            match token {
-                Token::LeftParen => Expr::List(self.list()),
-                Token::Identifier(i) => {
-                    self.advance();
-                    Expr::Atom(AtomValue::String(i))
-                }
-                Token::Number(n) => {
-                    self.advance();
-                    Expr::Atom(AtomValue::Number(n))
-                }
-                _ => {
-                    panic!("unexpected token")
-                }
+    fn expression(&mut self) -> Result<Expr, ParseError> {
+        match self.current_token() {
+            Some(Token::LeftParen) => {
+                let exprs = self.list()?;
+                Ok(Expr::List(exprs))
             }
-        } else {
-            Expr::List(Vec::new())
+            Some(Token::Identifier(i)) => {
+                self.advance();
+                Ok(Expr::Atom(AtomValue::String(i)))
+            }
+            Some(Token::Number(n)) => {
+                self.advance();
+                Ok(Expr::Atom(AtomValue::Number(n)))
+            }
+            Some(token) => Err(ParseError::UnexpectedToken(token.to_string())),
+            None => Ok(Expr::List(Vec::new())),
         }
     }
 
-    // Recursive descent parser
-    pub fn parse(&mut self) -> Expr {
+    pub fn parse(&mut self) -> Result<Expr, ParseError> {
         self.expression()
     }
 }
