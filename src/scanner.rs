@@ -77,9 +77,6 @@ impl<'a> Scanner<'a> {
                 }
             }
         }
-        for token in &self.tokens {
-            print!("token {}", token)
-        }
         self.tokens
     }
 }
